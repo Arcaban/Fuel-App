@@ -1,12 +1,12 @@
+import { Request, Response } from 'express';
+
 class FuelController {
-    async getFuelStations(req, res) {
-        // Logic to retrieve fuel stations
-        res.send("List of fuel stations");
+    async getFuelStations(_req: Request, res: Response): Promise<void> {
+        res.send('List of fuel stations');
     }
 
-    async getFuelPrices(req, res) {
-        // Logic to retrieve fuel prices
-        res.send("Current fuel prices");
+    async getFuelPrices(_req: Request, res: Response): Promise<void> {
+        res.send('Current fuel prices');
     }
 }
 

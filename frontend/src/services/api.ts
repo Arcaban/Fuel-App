@@ -18,15 +18,16 @@ export interface BrandPrice {
   count: number;
 }
 
-// Fetch nearby stations
+// Fetch nearby stations (all brands)
 export const fetchNearbyStations = async (
   latitude: number,
   longitude: number,
-  radius: number = 5
+  radius: number = 5,
+  fuelType: string = 'Gasolina 95'
 ) => {
   try {
     const response = await fetch(
-      `${API_BASE}/stations/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}`
+      `${API_BASE}/stations/nearby?lat=${latitude}&lng=${longitude}&radius=${radius}&fuelType=${encodeURIComponent(fuelType)}`
     );
     if (!response.ok) throw new Error('Failed to fetch stations');
     const data = await response.json();

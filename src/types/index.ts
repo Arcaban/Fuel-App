@@ -1,25 +1,32 @@
+export interface Coordinates {
+    latitude: number;
+    longitude: number;
+}
+
 export interface FuelStation {
     id: string;
     name: string;
-    location: {
-        latitude: number;
-        longitude: number;
-    };
+    location: Coordinates;
     fuelTypes: string[];
-    prices: {
-        [key: string]: number; // fuel type as key and price as value
-    };
+    prices: Record<string, number>;
 }
 
 export interface Route {
-    start: {
-        latitude: number;
-        longitude: number;
-    };
-    end: {
-        latitude: number;
-        longitude: number;
-    };
-    distance: number; // in kilometers
-    duration: number; // in minutes
+    start: Coordinates;
+    end: Coordinates;
+    distance: number; // km
+    duration: number; // minutes
+}
+
+export interface UserPreferences {
+    fuelType: string;
+    maxDistance: number; // km
+    prioritizePrice: boolean;
+}
+
+export interface ScoredStation {
+    station: FuelStation;
+    distance: number; // km from user location
+    score: number;    // 0-1, higher is better
+    price: number;
 }

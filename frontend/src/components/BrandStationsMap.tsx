@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
-  useMap,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Station } from '../services/api';
+
+const ORANGE = '#C8541A';
 
 export interface BrandStationsMapProps {
   stations: Station[];
@@ -18,49 +15,47 @@ export interface BrandStationsMapProps {
   onStationMarkerClick: (stationId: string) => void;
 }
 
-function FitBounds({
-  stations,
-  userLat,
-  userLng,
-}: {
-  stations: Station[];
-  userLat: number;
-  userLng: number;
-}) {
-  const map = useMap();
+const createNumberedIcon = (num: number, isSelected: boolean) => {
+  const bg = isSelected ? ORANGE : '#FFFFFF';
+  const color = isSelected ? '#FFFFFF' : '#444444';
+  const border = isSelected ? ORANGE : '#CCCCCC';
+  return L.divIcon({
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:${color};text-align:center;line-height:24px;font-size:10px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;border:2px solid ${border};box-shadow:0 2px 8px rgba(0,0,0,0.18);box-sizing:border-box;">${String(num).padStart(2, '0')}</div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+};
 
+const aquiIcon = L.divIcon({
+  html: `<div style="background:${ORANGE};color:#fff;padding:5px 11px;border-radius:14px;font-size:12px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.22);">Aqui</div>`,
+  className: '',
+  iconSize: [50, 28],
+  iconAnchor: [25, 14],
+});
+
+function FitBounds({ stations, userLat, userLng }: { stations: Station[]; userLat: number; userLng: number }) {
+  const map = useMap();
   useEffect(() => {
     if (stations.length === 0) {
       map.setView([userLat, userLng], 13);
       return;
     }
-    const bounds = L.latLngBounds(
-      stations.map((s) => [s.latitude, s.longitude] as [number, number])
-    );
+    const bounds = L.latLngBounds(stations.map((s) => [s.latitude, s.longitude] as [number, number]));
     bounds.extend([userLat, userLng]);
     map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
   }, [map, stations, userLat, userLng]);
-
   return null;
 }
 
-function FlyToSelected({
-  selectedId,
-  stations,
-}: {
-  selectedId: string | null;
-  stations: Station[];
-}) {
+function FlyToSelected({ selectedId, stations }: { selectedId: string | null; stations: Station[] }) {
   const map = useMap();
-
   useEffect(() => {
     if (!selectedId) return;
     const s = stations.find((x) => x.id === selectedId);
     if (!s) return;
-    const z = Math.max(map.getZoom(), 15);
-    map.flyTo([s.latitude, s.longitude], z, { duration: 0.35 });
+    map.flyTo([s.latitude, s.longitude], Math.max(map.getZoom(), 15), { duration: 0.35 });
   }, [map, selectedId, stations]);
-
   return null;
 }
 
@@ -72,10 +67,7 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
   selectedId,
   onStationMarkerClick,
 }) => {
-  const center = useMemo<[number, number]>(
-    () => [userLat, userLng],
-    [userLat, userLng]
-  );
+  const center = useMemo<[number, number]>(() => [userLat, userLng], [userLat, userLng]);
 
   return (
     <MapContainer
@@ -83,44 +75,25 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
       zoom={13}
       style={{ height: '100%', width: '100%', zIndex: 0 }}
       scrollWheelZoom
-      attributionControl
+      attributionControl={false}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
       <FitBounds stations={stations} userLat={userLat} userLng={userLng} />
       <FlyToSelected selectedId={selectedId} stations={stations} />
 
-      <CircleMarker
-        center={[userLat, userLng]}
-        radius={6}
-        pathOptions={{
-          color: '#111',
-          weight: 2,
-          fillColor: '#4285F4',
-          fillOpacity: 0.95,
-        }}
-      />
+      <Marker position={[userLat, userLng]} icon={aquiIcon} />
 
-      {stations.map((s) => {
-        const isCheapest = cheapestId === s.id;
-        const isSelected = selectedId === s.id;
-        const radius = isCheapest ? 10 : 7;
+      {stations.map((s, index) => {
+        const isSelected = selectedId === s.id || cheapestId === s.id;
         return (
-          <CircleMarker
+          <Marker
             key={s.id}
-            center={[s.latitude, s.longitude]}
-            radius={radius}
-            pathOptions={{
-              color: isSelected ? '#111' : isCheapest ? '#B8860B' : '#555',
-              weight: isSelected ? 3 : isCheapest ? 2.5 : 1.5,
-              fillColor: isCheapest ? '#FFD54F' : isSelected ? '#90CAF9' : '#fff',
-              fillOpacity: 0.95,
-            }}
-            eventHandlers={{
-              click: () => onStationMarkerClick(s.id),
-            }}
+            position={[s.latitude, s.longitude]}
+            icon={createNumberedIcon(index + 1, isSelected)}
+            eventHandlers={{ click: () => onStationMarkerClick(s.id) }}
           />
         );
       })}

@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from '../hooks/useLocation';
-import { fetchStationsByBrand, type Station } from '../services/api';
+import { fetchStationsByBrand, fetchNearbyStations, type Station } from '../services/api';
 import BrandStationsMap from '../components/BrandStationsMap';
 import type { SelectedStation } from '../types/selectedStation';
-import { buildWazeNavigateUrl, openExternal } from '../utils/navigationLinks';
+import { PORTUGAL_FUEL_BRANDS } from '../constants/portugalBrands';
+import { buildWazeNavigateUrl, buildGoogleMapsDirectionsUrl, openExternal } from '../utils/navigationLinks';
+
+const ORANGE = '#C8541A';
+const BG = '#F5F0E8';
 
 interface BrandScreenProps {
   brand: string;
@@ -11,60 +15,69 @@ interface BrandScreenProps {
   onBack: () => void;
 }
 
-const formatUpdated = (iso: string): string => {
+const formatRelativeTime = (iso: string): string => {
   try {
-    const d = new Date(iso);
-    return d.toLocaleString('pt-PT', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const ms = Date.now() - new Date(iso).getTime();
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.floor(ms / 60000);
+    if (hours >= 1) return `há ${hours} h`;
+    if (minutes >= 1) return `há ${minutes} min`;
+    return 'agora';
   } catch {
     return '—';
   }
+};
+
+const getBrandColor = (brandId: string): string => {
+  const found = PORTUGAL_FUEL_BRANDS.find((b) => b.id === brandId);
+  return found?.color ?? ORANGE;
 };
 
 const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBack }) => {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'price' | 'distance'>('price');
   const listRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { location, loading: locationLoading } = useLocation();
 
+  const fuelType = sessionStorage.getItem('fuelType') || 'Gasolina 95';
+  const radius = parseInt(sessionStorage.getItem('radius') || '15', 10);
+  const isAll = brand === '__all__';
+
   useEffect(() => {
     if (!location) return;
-
     const loadStations = async () => {
       setLoading(true);
-      const fuelType = sessionStorage.getItem('fuelType') || 'Diesel';
-      const data = await fetchStationsByBrand(
-        brand,
-        location.latitude,
-        location.longitude,
-        15,
-        fuelType
-      );
+      const data = isAll
+        ? await fetchNearbyStations(location.latitude, location.longitude, radius, fuelType)
+        : await fetchStationsByBrand(brand, location.latitude, location.longitude, radius, fuelType);
       setStations(data);
       setLoading(false);
     };
-
     loadStations();
   }, [brand, location]);
 
+  const sortedStations = useMemo(
+    () =>
+      [...stations].sort((a, b) =>
+        sortBy === 'price' ? a.price - b.price : a.distance - b.distance
+      ),
+    [stations, sortBy]
+  );
+
   const cheapestStation = useMemo(
     () =>
-      stations.length > 0
-        ? stations.reduce((prev, cur) => (cur.price < prev.price ? cur : prev))
+      sortedStations.length > 0
+        ? sortedStations.reduce((p, c) => (c.price < p.price ? c : p))
         : null,
-    [stations]
+    [sortedStations]
   );
 
   const averageNearbyPrice = useMemo(() => {
-    if (stations.length === 0) return undefined;
-    const sum = stations.reduce((a, s) => a + s.price, 0);
-    return sum / stations.length;
-  }, [stations]);
+    if (sortedStations.length === 0) return undefined;
+    return sortedStations.reduce((a, s) => a + s.price, 0) / sortedStations.length;
+  }, [sortedStations]);
 
   useEffect(() => {
     if (cheapestStation) setSelectedId(cheapestStation.id);
@@ -72,8 +85,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
 
   const handleMarkerClick = (id: string) => {
     setSelectedId(id);
-    const el = listRefs.current[id];
-    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    listRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
   const buildSelected = (s: Station): SelectedStation => ({
@@ -85,41 +97,122 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
         : undefined,
   });
 
-  const cardBase: React.CSSProperties = {
-    borderRadius: '14px',
-    padding: '14px',
-    marginBottom: '10px',
-    border: '1px solid #eaeaea',
-    backgroundColor: '#fff',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    touchAction: 'manipulation',
-  };
+  const cityLabel = location?.city ?? 'Portugal';
+  const screenTitle = isAll ? fuelType : brand;
+  const avgLabel = averageNearbyPrice ? `Média €${averageNearbyPrice.toFixed(3)}` : '';
 
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
         width: '100%',
         maxWidth: '480px',
         margin: '0 auto',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#f6f6f6',
+        backgroundColor: BG,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* Map — pins only; names & distances stay in the list */}
+      {/* Header */}
       <div
         style={{
-          flex: '0 0 50vh',
-          minHeight: '240px',
-          position: 'relative',
-          backgroundColor: '#e8eef2',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px 8px',
+          flexShrink: 0,
         }}
       >
-        {!loading && !locationLoading && stations.length > 0 && location ? (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Voltar"
+          style={{
+            width: '38px',
+            height: '38px',
+            backgroundColor: '#fff',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            fontSize: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          }}
+        >
+          ←
+        </button>
+        <span
+          style={{
+            fontSize: '12px',
+            fontWeight: 800,
+            color: '#AAA',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {sortedStations.length} postos
+        </span>
+        {/* Spacer to keep title centered */}
+        <div style={{ width: '38px' }} />
+      </div>
+
+      {/* Title + subtitle */}
+      <div style={{ padding: '4px 20px 12px', flexShrink: 0 }}>
+        <h1
+          style={{
+            margin: '0 0 4px',
+            fontSize: '28px',
+            fontWeight: 900,
+            color: '#111',
+            letterSpacing: '-0.5px',
+          }}
+        >
+          {screenTitle}
+        </h1>
+        <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
+          {cityLabel} · {radius} km de raio{avgLabel ? ` · ${avgLabel}` : ''}
+        </p>
+      </div>
+
+      {/* Sort tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          padding: '0 20px 14px',
+          flexShrink: 0,
+        }}
+      >
+        {(['price', 'distance'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setSortBy(mode)}
+            style={{
+              padding: '9px 18px',
+              borderRadius: '22px',
+              border: 'none',
+              backgroundColor: sortBy === mode ? '#111' : '#fff',
+              color: sortBy === mode ? '#fff' : '#666',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {mode === 'price' ? 'Mais baratos' : 'Mais próximos'}
+          </button>
+        ))}
+      </div>
+
+      {/* Map */}
+      <div style={{ flex: '0 0 26vh', minHeight: '180px', position: 'relative', flexShrink: 0 }}>
+        {!loading && !locationLoading && sortedStations.length > 0 && location ? (
           <BrandStationsMap
-            stations={stations}
+            stations={sortedStations}
             userLat={location.latitude}
             userLng={location.longitude}
             cheapestId={cheapestStation?.id ?? null}
@@ -133,204 +226,214 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#888',
-              fontSize: '14px',
+              color: '#BBB',
+              fontSize: '13px',
+              backgroundColor: '#EDE8DF',
             }}
           >
             {loading || locationLoading ? 'A carregar postos…' : 'Sem postos no mapa'}
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Voltar"
-          style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            zIndex: 500,
-            width: '44px',
-            height: '44px',
-            backgroundColor: '#fff',
-            border: 'none',
-            borderRadius: '12px',
-            cursor: 'pointer',
-            fontSize: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
-          }}
-        >
-          ←
-        </button>
       </div>
 
-      {/* List */}
+      {/* Station list */}
       <div
         style={{
           flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          backgroundColor: '#f6f6f6',
+          overflowY: 'auto',
+          backgroundColor: '#fff',
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '20px',
+          marginTop: '-12px',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        <div
-          style={{
-            padding: '16px 16px 8px',
-            backgroundColor: '#f6f6f6',
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '20px',
-              fontWeight: 800,
-              margin: '0 0 4px',
-              color: '#111',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {brand}
-          </h2>
-          <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
-            {stations.length} posto{stations.length !== 1 ? 's' : ''} na zona
-            {cheapestStation
-              ? ` · desde €${cheapestStation.price.toFixed(3)}/L`
-              : ''}
-          </p>
-        </div>
+        {loading || locationLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#BBB', fontSize: '13px' }}>
+            A carregar…
+          </div>
+        ) : sortedStations.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#BBB', fontSize: '13px' }}>
+            Sem postos por perto.
+          </div>
+        ) : (
+          sortedStations.map((station, index) => {
+            const isCheapest = cheapestStation?.id === station.id;
+            const isSelected = selectedId === station.id;
+            const priceDiff = cheapestStation ? station.price - cheapestStation.price : 0;
+            const diffCents = (priceDiff * 100).toFixed(1);
+            const brandColor = getBrandColor(station.brand);
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 20px' }}>
-          {loading || locationLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: '#888' }}>
-              A carregar…
-            </div>
-          ) : stations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 16px', color: '#888' }}>
-              Sem postos {brand} por perto.
-            </div>
-          ) : (
-            stations.map((station) => {
-              const isCheapest = cheapestStation?.id === station.id;
-              const isSelected = selectedId === station.id;
-              return (
-                <div
-                  key={station.id}
-                  ref={(el) => {
-                    listRefs.current[station.id] = el;
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
+            const priceStr = station.price.toFixed(3);
+            const [intPart, decPart] = priceStr.split('.');
+
+            return (
+              <div
+                key={station.id}
+                ref={(el) => { listRefs.current[station.id] = el; }}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedId(station.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     setSelectedId(station.id);
-                    onStationSelect(buildSelected(station));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedId(station.id);
-                      onStationSelect(buildSelected(station));
-                    }
-                  }}
-                  style={{
-                    ...cardBase,
-                    outline: isSelected ? '2px solid #111' : 'none',
-                    outlineOffset: isSelected ? '0px' : undefined,
-                    borderColor: isCheapest ? '#C9A227' : '#eaeaea',
-                    backgroundColor: isCheapest ? '#FFFBF0' : '#fff',
-                  }}
-                >
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid #F0ECE4',
+                  cursor: 'pointer',
+                  backgroundColor: isSelected ? '#FBF8F4' : '#fff',
+                  transition: 'background-color 0.1s',
+                }}
+              >
+                {/* Main row: number + info + price */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  {/* Row number */}
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#C8C2B8',
+                      width: '22px',
+                      flexShrink: 0,
+                      paddingTop: '2px',
+                    }}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+
+                  {/* Station info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginBottom: '3px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          color: brandColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        {station.brand}
+                      </span>
+                      {isCheapest && (
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#AAA' }}>
+                          · Melhor preço
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        margin: '0 0 4px',
+                        fontSize: '16px',
+                        fontWeight: 700,
+                        color: '#111',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {station.name}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#BBB' }}>
+                      {station.distance.toFixed(1)} km · {formatRelativeTime(station.lastUpdated)}
+                    </p>
+                  </div>
+
+                  {/* Price */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#888', marginRight: '1px', lineHeight: 1 }}>
+                        €
+                      </span>
+                      <span style={{ fontSize: '22px', fontWeight: 900, color: '#111', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                        {intPart}.
+                      </span>
+                      <span style={{ fontSize: '16px', fontWeight: 900, color: '#111', lineHeight: 1 }}>
+                        {decPart}
+                      </span>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 600, color: isCheapest ? '#CCC' : ORANGE, textAlign: 'right' }}>
+                      {isCheapest ? '—' : `+${diffCents} c`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Navigation buttons — shown when station is selected */}
+                {isSelected && (
                   <div
                     style={{
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '12px',
-                      marginBottom: '10px',
+                      gap: '8px',
+                      marginTop: '14px',
+                      paddingLeft: '34px',
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontWeight: 700,
-                            fontSize: '16px',
-                            color: '#111',
-                            lineHeight: 1.25,
-                          }}
-                        >
-                          {station.name}
-                        </p>
-                        {isCheapest && (
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                              color: '#5c4a00',
-                              backgroundColor: '#FFD54F',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                            }}
-                          >
-                            Melhor preço
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#666' }}>
-                        {station.distance.toFixed(1)} km · ~{Math.max(1, Math.round(station.distance * 2))} min
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: '26px',
-                          fontWeight: 800,
-                          color: '#111',
-                          letterSpacing: '-0.03em',
-                        }}
-                      >
-                        €{station.price.toFixed(3)}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>/ litro</p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openExternal(buildWazeNavigateUrl(station.latitude, station.longitude));
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '11px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: '#33CCFF',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Waze
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openExternal(buildGoogleMapsDirectionsUrl(station.latitude, station.longitude));
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '11px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #E8E3DA',
+                        backgroundColor: '#fff',
+                        color: '#111',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Google Maps
+                    </button>
                   </div>
-
-                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#888' }}>
-                    Atualizado {formatUpdated(station.lastUpdated)}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedId(station.id);
-                      openExternal(buildWazeNavigateUrl(station.latitude, station.longitude));
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '15px',
-                      fontWeight: 700,
-                      backgroundColor: '#111',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Navegar no Waze
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
