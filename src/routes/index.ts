@@ -1,6 +1,7 @@
 import { Application, Request, Response } from 'express';
 import { getNearby, getByBrand, getStation } from '../controllers/stationController';
 import { getBrandPricesByLocation } from '../controllers/priceController';
+import { getTrends } from '../controllers/statsController';
 
 const PRIVACY_HTML = `<!DOCTYPE html>
 <html lang="pt">
@@ -24,7 +25,7 @@ const PRIVACY_HTML = `<!DOCTYPE html>
   <p class="meta">Aplicação: <strong>tanq.</strong> &nbsp;|&nbsp; Última atualização: 23 de maio de 2026</p>
 
   <h2>1. Responsável pelo tratamento</h2>
-  <p>O responsável pelo tratamento dos dados pessoais recolhidos através da aplicação <strong>tanq.</strong> é Ricardo Arcaban, contactável através do endereço de e‑mail <a href="mailto:suporte@tanq.app">suporte@tanq.app</a>.</p>
+  <p>O responsável pelo tratamento dos dados pessoais recolhidos através da aplicação <strong>tanq.</strong> é Ricardo Arcaban, contactável através do endereço de e‑mail <a href="mailto:tanq.fuel@gmail.com">tanq.fuel@gmail.com</a>.</p>
 
   <h2>2. Dados recolhidos</h2>
   <p>A aplicação tanq. recolhe exclusivamente a <strong>localização geográfica aproximada</strong> do dispositivo, com o único propósito de pesquisar postos de combustível nas proximidades do utilizador.</p>
@@ -63,7 +64,7 @@ const PRIVACY_HTML = `<!DOCTYPE html>
   <p>A aplicação tanq. não se destina a menores de 16 anos e não recolhe intencionalmente dados de menores.</p>
 
   <h2>10. Contacto</h2>
-  <p>Para qualquer questão relacionada com privacidade ou proteção de dados, contacte: <a href="mailto:suporte@tanq.app">suporte@tanq.app</a></p>
+  <p>Para qualquer questão relacionada com privacidade ou proteção de dados, contacte: <a href="mailto:tanq.fuel@gmail.com">tanq.fuel@gmail.com</a></p>
 
   <hr />
   <p style="font-size:13px;color:#999;">tanq. &copy; 2026 &nbsp;|&nbsp; Dados de preços: DGEG — precoscombustiveis.dgeg.gov.pt (dados públicos abertos)</p>
@@ -81,6 +82,9 @@ export const setRoutes = (app: Application): void => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(PRIVACY_HTML);
     });
+
+    // Stats / price trends (active only when DATABASE_URL is set)
+    app.get('/api/stats/trends', getTrends);
 
     // Station endpoints
     app.get('/api/stations/nearby', getNearby);
