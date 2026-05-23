@@ -1,17 +1,21 @@
 /** Primary DGEG fuel name per app label */
 export const DGEG_FUEL_TYPES: Record<string, string> = {
-  Diesel: 'Gasóleo simples',
-  'Gasolina 95': 'Gasolina simples 95',
-  'Gasolina 98': 'Gasolina especial 95',
-  'Gasóleo simples': 'Gasóleo simples',
-  'Gasolina simples 95': 'Gasolina simples 95',
+  Diesel:                  'Gasóleo simples',
+  'Gasolina 95':           'Gasolina simples 95',
+  'Gasolina 98':           'Gasolina especial 98',
+  'Diesel Aditivado':      'Gasóleo especial',
+  'Gasolina 95 Aditivada': 'Gasolina especial 95',
+  'Gasóleo simples':       'Gasóleo simples',
+  'Gasolina simples 95':   'Gasolina simples 95',
 };
 
-/** Fallbacks when a posto does not sell the primary type (e.g. Prio often has especial only) */
+/** Fallbacks when a posto does not sell the primary type */
 export const DGEG_FUEL_FALLBACKS: Record<string, string[]> = {
-  Diesel: ['Gasóleo simples', 'Gasóleo especial', 'Biodiesel B15'],
-  'Gasolina 95': ['Gasolina simples 95', 'Gasolina especial 95'],
-  'Gasolina 98': ['Gasolina especial 95', 'Gasolina simples 95'],
+  Diesel:                  ['Gasóleo simples', 'Biodiesel B15'],
+  'Gasolina 95':           ['Gasolina simples 95'],
+  'Gasolina 98':           ['Gasolina especial 98', 'Gasolina especial 95', 'Gasolina simples 95'],
+  'Diesel Aditivado':      ['Gasóleo especial', 'Gasóleo simples'],
+  'Gasolina 95 Aditivada': ['Gasolina especial 95', 'Gasolina simples 95'],
 };
 
 export const getDgegFuelCandidates = (fuelType?: string): string[] => {
