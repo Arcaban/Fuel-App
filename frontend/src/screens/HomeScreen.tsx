@@ -12,16 +12,20 @@ const HAIR    = '#26314A';
 
 // Fuel accent colors (dark theme — text, dots, badges, borders)
 const FUEL_ACCENT: Record<string, string> = {
-  'Gasolina 95': '#3FB37A',
-  'Diesel':      '#E08E3F',
-  'Gasolina 98': '#8FD3FF',
+  'Gasolina 95':          '#3FB37A',
+  'Diesel':               '#E08E3F',
+  'Gasolina 98':          '#8FD3FF',
+  'Gasolina 95 Aditivada':'#5CC48A',
+  'Diesel Aditivado':     '#F0A030',
 };
 
 // Fuel fill colors (dark theme — solid button backgrounds only)
 const FUEL_FILL: Record<string, string> = {
-  'Gasolina 95': '#3FB37A',
-  'Diesel':      '#E08E3F',
-  'Gasolina 98': '#3FA8EE',
+  'Gasolina 95':          '#3FB37A',
+  'Diesel':               '#E08E3F',
+  'Gasolina 98':          '#3FA8EE',
+  'Gasolina 95 Aditivada':'#4EAA7C',
+  'Diesel Aditivado':     '#E09028',
 };
 
 const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -38,13 +42,15 @@ interface BrandPrice {
   savings: number;
 }
 
-const FUEL_TYPES = ['Gasolina 95', 'Diesel', 'Gasolina 98'] as const;
+const FUEL_TYPES = ['Gasolina 95', 'Diesel', 'Gasolina 98', 'Gasolina 95 Aditivada', 'Diesel Aditivado'] as const;
 
 // Tinted chip backgrounds
 const FUEL_CHIP_BG: Record<string, string> = {
-  'Gasolina 95': '#13261F',
-  'Diesel':      '#2A1C10',
-  'Gasolina 98': '#101E2A',
+  'Gasolina 95':          '#13261F',
+  'Diesel':               '#2A1C10',
+  'Gasolina 98':          '#101E2A',
+  'Gasolina 95 Aditivada':'#162B21',
+  'Diesel Aditivado':     '#2A1E0D',
 };
 
 // Location pin SVG
@@ -54,13 +60,6 @@ const PinIcon = ({ color }: { color: string }) => (
       d="M8 1.5C5.515 1.5 3.5 3.515 3.5 6c0 3.75 4.5 8.5 4.5 8.5s4.5-4.75 4.5-8.5c0-2.485-2.015-4.5-4.5-4.5Zm0 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"
       fill={color}
     />
-  </svg>
-);
-
-// Arrow right SVG
-const ArrowRight = ({ color }: { color: string }) => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M5 3l4 4-4 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -155,7 +154,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 22px' }}>
 
         {/* Logo row */}
-        <div style={{ paddingTop: '52px', marginBottom: '32px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ paddingTop: '52px', marginBottom: '24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             <h1
               style={{
@@ -170,7 +169,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
             >
               tanq<span style={{ color: accent }}>.</span>
             </h1>
-            <p style={{ margin: '8px 0 0', fontSize: '14px', color: MUTED, fontWeight: 400 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '8px' }}>
+              <PinIcon color={accent} />
+              <span style={{ fontSize: '14px', fontWeight: 700, color: INK }}>{cityLabel}</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: MUTED, fontWeight: 400 }}>
               Preços de combustível em Portugal.
             </p>
           </div>
@@ -196,40 +199,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           </button>
         </div>
 
-        {/* Location row */}
-        <div style={{ marginBottom: '24px' }}>
-          <p
-            style={{
-              margin: '0 0 8px',
-              fontSize: '11px',
-              color: MUTED,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 700,
-            }}
-          >
-            Localização
-          </p>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: SURFACE,
-              borderRadius: '14px',
-              padding: '14px 16px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <PinIcon color={accent} />
-              <span style={{ fontSize: '16px', fontWeight: 700, color: INK }}>
-                {cityLabel}
-              </span>
-            </div>
-            <ArrowRight color={MUTED} />
-          </div>
-        </div>
-
         {/* Location denied banner */}
         {denied && (
           <div
@@ -237,7 +206,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              marginTop: '-16px',
               marginBottom: '16px',
               padding: '10px 14px',
               backgroundColor: 'rgba(194,106,26,0.12)',
@@ -269,7 +237,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           >
             Combustível
           </p>
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {FUEL_TYPES.map((type) => {
               const isActive = fuelType === type;
               const chipAccent = FUEL_ACCENT[type] ?? '#0F8754';
@@ -279,7 +247,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
                   type="button"
                   onClick={() => setFuelType(type)}
                   style={{
-                    flexShrink: 0,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
