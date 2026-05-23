@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from '../hooks/useLocation';
 import { fetchBrandPrices } from '../services/api';
 import { PORTUGAL_FUEL_BRANDS } from '../constants/portugalBrands';
@@ -92,6 +92,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
   );
   const [brandPrices, setBrandPrices] = useState<BrandPrice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chipScrollPct, setChipScrollPct] = useState(0);
+  const chipScrollRef = useRef<HTMLDivElement>(null);
   const { location, loading: locationLoading, denied } = useLocation();
 
   const accent    = FUEL_ACCENT[fuelType] ?? '#0F8754';
@@ -237,7 +239,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           >
             Combustível
           </p>
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div
+            ref={chipScrollRef}
+            onScroll={() => {
+              const el = chipScrollRef.current;
+              if (!el) return;
+              const max = el.scrollWidth - el.clientWidth;
+              setChipScrollPct(max > 0 ? el.scrollLeft / max : 0);
+            }}
+            style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}
+          >
             {FUEL_TYPES.map((type) => {
               const isActive = fuelType === type;
               const chipAccent = FUEL_ACCENT[type] ?? '#0F8754';
@@ -276,6 +287,21 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
                 </button>
               );
             })}
+          </div>
+          {/* Scroll indicator */}
+          <div style={{ height: '2px', backgroundColor: HAIR, borderRadius: '1px', marginTop: '10px', position: 'relative' }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                height: '100%',
+                width: `${100 / FUEL_TYPES.length}%`,
+                borderRadius: '1px',
+                backgroundColor: accent,
+                left: `${chipScrollPct * (100 - 100 / FUEL_TYPES.length)}%`,
+                transition: 'left 0.1s ease',
+              }}
+            />
           </div>
         </div>
 
