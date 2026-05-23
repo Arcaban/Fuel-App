@@ -4,10 +4,8 @@
   "description": "An application to assist with fuel decision making and routing.",
   "main": "src/app.ts",
   "scripts": {
-    "start": "ts-node src/app.ts",
-    "start:api": "ts-node src/app.ts",
-    "start:client": "http-server client -p 3000 --cors -c-1 -o",
-    "dev": "concurrently \"npm run start:api\" \"npm run start:client\"",
+    "start": "node dist/app.js",
+    "start:dev": "ts-node src/app.ts",
     "build": "tsc",
     "test": "jest",
     "import-stations": "ts-node scripts/import-stations.ts"

@@ -1,87 +1,64 @@
 import React, { useState } from 'react';
 import HomeScreen from './screens/HomeScreen';
 import BrandScreen from './screens/BrandScreen';
-import StationScreen from './screens/StationScreen';
-import NavigationHandoff from './screens/NavigationHandoff';
-import type { SelectedStation } from './types/selectedStation';
+import OnboardingScreen from './screens/OnboardingScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import AboutScreen from './screens/AboutScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import { useLocation } from './hooks/useLocation';
 
-type ScreenType = 'home' | 'brand' | 'station' | 'navigation';
+type ScreenType = 'onboarding' | 'home' | 'brand' | 'settings' | 'about' | 'privacy';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>(
+    localStorage.getItem('onboarding_complete') ? 'home' : 'onboarding'
+  );
   const [selectedBrand, setSelectedBrand] = useState<string>('');
-  const [selectedStation, setSelectedStation] = useState<SelectedStation | null>(null);
+  const { denied } = useLocation();
 
   const handleBrandSelect = (brand: string) => {
     setSelectedBrand(brand);
-    setSelectedStation(null);
     setCurrentScreen('brand');
   };
-
-  const handleStationSelect = (station: SelectedStation) => {
-    setSelectedStation(station);
-    setCurrentScreen('station');
-  };
-
-  const handleNavigate = () => {
-    setCurrentScreen('navigation');
-  };
-
-  const goHome = () => {
-    setCurrentScreen('home');
-  };
-
-  const goBrand = () => {
-    setCurrentScreen('brand');
-  };
-
-  const goStation = () => {
-    setCurrentScreen('station');
-  };
-
-  const savingsLabel =
-    selectedStation?.savingsPerLiter !== undefined &&
-    selectedStation.savingsPerLiter > 0
-      ? `€${(selectedStation.savingsPerLiter * 50).toFixed(2)} / 50 L`
-      : '—';
 
   return (
     <div
       style={{
         width: '100%',
         minHeight: '100vh',
-        margin: '0',
-        padding: '0',
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        backgroundColor: '#fff',
-        display: 'flex',
-        flexDirection: 'column',
+        margin: 0,
+        padding: 0,
+        backgroundColor: '#0F1623',
       }}
     >
+      {currentScreen === 'onboarding' && (
+        <OnboardingScreen onComplete={() => setCurrentScreen('home')} />
+      )}
       {currentScreen === 'home' && (
-        <HomeScreen onBrandSelect={handleBrandSelect} />
+        <HomeScreen
+          onBrandSelect={handleBrandSelect}
+          onSettings={() => setCurrentScreen('settings')}
+        />
       )}
       {currentScreen === 'brand' && (
         <BrandScreen
           brand={selectedBrand}
-          onStationSelect={handleStationSelect}
-          onBack={goHome}
+          onBack={() => setCurrentScreen('home')}
         />
       )}
-      {currentScreen === 'station' && selectedStation && (
-        <StationScreen
-          station={selectedStation}
-          onNavigate={handleNavigate}
-          onBack={goBrand}
+      {currentScreen === 'settings' && (
+        <SettingsScreen
+          onBack={() => setCurrentScreen('home')}
+          onAbout={() => setCurrentScreen('about')}
+          onPrivacy={() => setCurrentScreen('privacy')}
+          locationDenied={denied}
         />
       )}
-      {currentScreen === 'navigation' && selectedStation && (
-        <NavigationHandoff
-          station={selectedStation}
-          savings={savingsLabel}
-          onBack={goStation}
-        />
+      {currentScreen === 'about' && (
+        <AboutScreen onBack={() => setCurrentScreen('settings')} />
+      )}
+      {currentScreen === 'privacy' && (
+        <PrivacyPolicyScreen onBack={() => setCurrentScreen('settings')} />
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Station } from '../services/api';
 
-const ORANGE = '#C8541A';
+const DEFAULT_ACCENT = '#0F8754';
 
 export interface BrandStationsMapProps {
   stations: Station[];
@@ -13,26 +13,28 @@ export interface BrandStationsMapProps {
   cheapestId: string | null;
   selectedId: string | null;
   onStationMarkerClick: (stationId: string) => void;
+  accentColor?: string;
 }
 
-const createNumberedIcon = (num: number, isSelected: boolean) => {
-  const bg = isSelected ? ORANGE : '#FFFFFF';
-  const color = isSelected ? '#FFFFFF' : '#444444';
-  const border = isSelected ? ORANGE : '#CCCCCC';
+const createNumberedIcon = (num: number, isSelected: boolean, accent: string) => {
+  const bg = isSelected ? accent : '#1A2333';
+  const color = isSelected ? '#FFFFFF' : '#94A3BC';
+  const border = isSelected ? accent : '#26314A';
   return L.divIcon({
-    html: `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:${color};text-align:center;line-height:24px;font-size:10px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;border:2px solid ${border};box-shadow:0 2px 8px rgba(0,0,0,0.18);box-sizing:border-box;">${String(num).padStart(2, '0')}</div>`,
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:${bg};color:${color};text-align:center;line-height:24px;font-size:10px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;border:2px solid ${border};box-shadow:0 2px 8px rgba(0,0,0,0.4);box-sizing:border-box;">${String(num).padStart(2, '0')}</div>`,
     className: '',
     iconSize: [28, 28],
     iconAnchor: [14, 14],
   });
 };
 
-const aquiIcon = L.divIcon({
-  html: `<div style="background:${ORANGE};color:#fff;padding:5px 11px;border-radius:14px;font-size:12px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.22);">Aqui</div>`,
-  className: '',
-  iconSize: [50, 28],
-  iconAnchor: [25, 14],
-});
+const makeAquiIcon = (accent: string) =>
+  L.divIcon({
+    html: `<div style="background:${accent};color:#fff;padding:5px 11px;border-radius:14px;font-size:12px;font-weight:800;font-family:-apple-system,BlinkMacSystemFont,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.35);">Aqui</div>`,
+    className: '',
+    iconSize: [50, 28],
+    iconAnchor: [25, 14],
+  });
 
 function FitBounds({ stations, userLat, userLng }: { stations: Station[]; userLat: number; userLng: number }) {
   const map = useMap();
@@ -59,6 +61,8 @@ function FlyToSelected({ selectedId, stations }: { selectedId: string | null; st
   return null;
 }
 
+const TILE_DARK_STYLE = `.osm-dark-tiles { filter: invert(100%) hue-rotate(180deg) brightness(0.65) saturate(0.25); }`;
+
 const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
   stations,
   userLat,
@@ -66,20 +70,25 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
   cheapestId,
   selectedId,
   onStationMarkerClick,
+  accentColor = DEFAULT_ACCENT,
 }) => {
   const center = useMemo<[number, number]>(() => [userLat, userLng], [userLat, userLng]);
+  const aquiIcon = useMemo(() => makeAquiIcon(accentColor), [accentColor]);
 
   return (
-    <MapContainer
-      center={center}
-      zoom={13}
-      style={{ height: '100%', width: '100%', zIndex: 0 }}
-      scrollWheelZoom
-      attributionControl={false}
-    >
+    <>
+      <style>{TILE_DARK_STYLE}</style>
+      <MapContainer
+        center={center}
+        zoom={13}
+        style={{ height: '100%', width: '100%', zIndex: 0 }}
+        scrollWheelZoom
+        attributionControl={false}
+      >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        className="osm-dark-tiles"
       />
       <FitBounds stations={stations} userLat={userLat} userLng={userLng} />
       <FlyToSelected selectedId={selectedId} stations={stations} />
@@ -92,12 +101,13 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
           <Marker
             key={s.id}
             position={[s.latitude, s.longitude]}
-            icon={createNumberedIcon(index + 1, isSelected)}
+            icon={createNumberedIcon(index + 1, isSelected, accentColor)}
             eventHandlers={{ click: () => onStationMarkerClick(s.id) }}
           />
         );
       })}
     </MapContainer>
+    </>
   );
 };
 

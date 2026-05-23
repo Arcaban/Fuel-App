@@ -4,21 +4,16 @@ interface LocationCoords {
   latitude: number;
   longitude: number;
   city: string;
-  error?: string;
 }
 
 export const useLocation = () => {
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [loading, setLoading] = useState(true);
+  const [denied, setDenied] = useState(false);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocation({
-        latitude: 38.7223,
-        longitude: -9.1393,
-        city: 'Lisboa',
-        error: 'Geolocation not supported'
-      });
+      setLocation({ latitude: 38.7223, longitude: -9.1393, city: 'Lisboa' });
       setLoading(false);
       return;
     }
@@ -26,26 +21,19 @@ export const useLocation = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // For now, hardcode city as Lisbon. In production, use reverse geocoding
-        setLocation({
-          latitude,
-          longitude,
-          city: 'Lisbon'
-        });
+        setLocation({ latitude, longitude, city: 'Lisboa' });
         setLoading(false);
       },
       (error) => {
-        // Fallback to Lisbon coordinates
-        setLocation({
-          latitude: 38.7223,
-          longitude: -9.1393,
-          city: 'Lisboa',
-          error: error.message
-        });
+        if (error.code === error.PERMISSION_DENIED) {
+          setDenied(true);
+        }
+        setLocation({ latitude: 38.7223, longitude: -9.1393, city: 'Lisboa' });
         setLoading(false);
-      }
+      },
+      { timeout: 10000, maximumAge: 60000 }
     );
   }, []);
 
-  return { location, loading };
+  return { location, loading, denied };
 };

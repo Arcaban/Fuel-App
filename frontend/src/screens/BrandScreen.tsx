@@ -2,16 +2,37 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from '../hooks/useLocation';
 import { fetchStationsByBrand, fetchNearbyStations, type Station } from '../services/api';
 import BrandStationsMap from '../components/BrandStationsMap';
-import type { SelectedStation } from '../types/selectedStation';
 import { PORTUGAL_FUEL_BRANDS } from '../constants/portugalBrands';
 import { buildWazeNavigateUrl, buildGoogleMapsDirectionsUrl, openExternal } from '../utils/navigationLinks';
 
-const ORANGE = '#C8541A';
-const BG = '#F5F0E8';
+// Midnight palette
+const BG      = '#0F1623';
+const SURFACE = '#1A2333';
+const INK     = '#F0F3F8';
+const MUTED   = '#94A3BC';
+const HAIR    = '#26314A';
+const SUNK    = '#0A0F1A';
+const STALE   = '#C26A1A'; // amber for >24 h old prices
+
+// Fuel accent colors (dark theme — text, dots, badges, borders)
+const FUEL_ACCENT: Record<string, string> = {
+  'Gasolina 95': '#3FB37A',
+  'Diesel':      '#E08E3F',
+  'Gasolina 98': '#8FD3FF',
+};
+
+// Fuel fill colors (dark theme — solid button backgrounds)
+const FUEL_FILL: Record<string, string> = {
+  'Gasolina 95': '#3FB37A',
+  'Diesel':      '#E08E3F',
+  'Gasolina 98': '#3FA8EE',
+};
+
+const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const STALE_MS = 86400000; // 24 h
 
 interface BrandScreenProps {
   brand: string;
-  onStationSelect: (station: SelectedStation) => void;
   onBack: () => void;
 }
 
@@ -28,35 +49,72 @@ const formatRelativeTime = (iso: string): string => {
   }
 };
 
-const getBrandColor = (brandId: string): string => {
-  const found = PORTUGAL_FUEL_BRANDS.find((b) => b.id === brandId);
-  return found?.color ?? ORANGE;
+const isStalePrice = (iso: string): boolean => {
+  try {
+    return Date.now() - new Date(iso).getTime() > STALE_MS;
+  } catch {
+    return false;
+  }
 };
 
-const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBack }) => {
+const getBrandColor = (brandId: string): string => {
+  const found = PORTUGAL_FUEL_BRANDS.find((b) => b.id === brandId);
+  return found?.color ?? '#94A3BC';
+};
+
+const BackIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M10 3L5 8l5 5" stroke={INK} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'price' | 'distance'>('price');
   const listRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
   const { location, loading: locationLoading } = useLocation();
 
   const fuelType = sessionStorage.getItem('fuelType') || 'Gasolina 95';
   const radius = parseInt(sessionStorage.getItem('radius') || '15', 10);
   const isAll = brand === '__all__';
 
+  const accent    = FUEL_ACCENT[fuelType] ?? '#0F8754';
+  const fillColor = FUEL_FILL[fuelType]   ?? '#0F8754';
+
+  const loadStations = async () => {
+    if (!location) return;
+    const data = isAll
+      ? await fetchNearbyStations(location.latitude, location.longitude, radius, fuelType)
+      : await fetchStationsByBrand(brand, location.latitude, location.longitude, radius, fuelType);
+    setStations(data);
+  };
+
   useEffect(() => {
     if (!location) return;
-    const loadStations = async () => {
-      setLoading(true);
-      const data = isAll
-        ? await fetchNearbyStations(location.latitude, location.longitude, radius, fuelType)
-        : await fetchStationsByBrand(brand, location.latitude, location.longitude, radius, fuelType);
-      setStations(data);
-      setLoading(false);
-    };
-    loadStations();
-  }, [brand, location]);
+    setLoading(true);
+    loadStations().then(() => setLoading(false));
+  }, [brand, location]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = async (e: React.TouchEvent) => {
+    const el = listScrollRef.current;
+    if (!el || refreshing || loading) return;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (dy > 70 && el.scrollTop === 0) {
+      setRefreshing(true);
+      await loadStations();
+      setRefreshing(false);
+    }
+  };
 
   const sortedStations = useMemo(
     () =>
@@ -88,15 +146,6 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
     listRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
 
-  const buildSelected = (s: Station): SelectedStation => ({
-    ...s,
-    averageNearbyPrice,
-    savingsPerLiter:
-      averageNearbyPrice !== undefined
-        ? +(averageNearbyPrice - s.price).toFixed(3)
-        : undefined,
-  });
-
   const cityLabel = location?.city ?? 'Portugal';
   const screenTitle = isAll ? fuelType : brand;
   const avgLabel = averageNearbyPrice ? `Média €${averageNearbyPrice.toFixed(3)}` : '';
@@ -112,7 +161,8 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: BG,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: FONT,
+        color: INK,
       }}
     >
       {/* Header */}
@@ -132,31 +182,28 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
           style={{
             width: '38px',
             height: '38px',
-            backgroundColor: '#fff',
+            backgroundColor: SURFACE,
             border: 'none',
             borderRadius: '50%',
             cursor: 'pointer',
-            fontSize: '18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
           }}
         >
-          ←
+          <BackIcon />
         </button>
         <span
           style={{
             fontSize: '12px',
             fontWeight: 800,
-            color: '#AAA',
+            color: MUTED,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
           }}
         >
           {sortedStations.length} postos
         </span>
-        {/* Spacer to keep title centered */}
         <div style={{ width: '38px' }} />
       </div>
 
@@ -167,13 +214,13 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
             margin: '0 0 4px',
             fontSize: '28px',
             fontWeight: 900,
-            color: '#111',
+            color: INK,
             letterSpacing: '-0.5px',
           }}
         >
           {screenTitle}
         </h1>
-        <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: MUTED }}>
           {cityLabel} · {radius} km de raio{avgLabel ? ` · ${avgLabel}` : ''}
         </p>
       </div>
@@ -195,12 +242,13 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
             style={{
               padding: '9px 18px',
               borderRadius: '22px',
-              border: 'none',
-              backgroundColor: sortBy === mode ? '#111' : '#fff',
-              color: sortBy === mode ? '#fff' : '#666',
+              border: sortBy === mode ? `1.5px solid ${fillColor}` : `1.5px solid ${HAIR}`,
+              backgroundColor: sortBy === mode ? fillColor : SURFACE,
+              color: sortBy === mode ? '#fff' : MUTED,
               fontWeight: 700,
               fontSize: '13px',
               cursor: 'pointer',
+              fontFamily: FONT,
             }}
           >
             {mode === 'price' ? 'Mais baratos' : 'Mais próximos'}
@@ -218,6 +266,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
             cheapestId={cheapestStation?.id ?? null}
             selectedId={selectedId}
             onStationMarkerClick={handleMarkerClick}
+            accentColor={accent}
           />
         ) : (
           <div
@@ -226,9 +275,9 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#BBB',
+              color: MUTED,
               fontSize: '13px',
-              backgroundColor: '#EDE8DF',
+              backgroundColor: SUNK,
             }}
           >
             {loading || locationLoading ? 'A carregar postos…' : 'Sem postos no mapa'}
@@ -238,10 +287,13 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
 
       {/* Station list */}
       <div
+        ref={listScrollRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         style={{
           flex: 1,
           overflowY: 'auto',
-          backgroundColor: '#fff',
+          backgroundColor: SURFACE,
           borderTopLeftRadius: '20px',
           borderTopRightRadius: '20px',
           marginTop: '-12px',
@@ -249,12 +301,27 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
           zIndex: 1,
         }}
       >
+        {/* Pull-to-refresh indicator */}
+        {refreshing && (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '12px',
+              fontSize: '12px',
+              color: accent,
+              fontWeight: 600,
+            }}
+          >
+            A atualizar…
+          </div>
+        )}
+
         {loading || locationLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#BBB', fontSize: '13px' }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: MUTED, fontSize: '13px' }}>
             A carregar…
           </div>
         ) : sortedStations.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#BBB', fontSize: '13px' }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: MUTED, fontSize: '13px' }}>
             Sem postos por perto.
           </div>
         ) : (
@@ -264,6 +331,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
             const priceDiff = cheapestStation ? station.price - cheapestStation.price : 0;
             const diffCents = (priceDiff * 100).toFixed(1);
             const brandColor = getBrandColor(station.brand);
+            const stale = isStalePrice(station.lastUpdated);
 
             const priceStr = station.price.toFixed(3);
             const [intPart, decPart] = priceStr.split('.');
@@ -274,9 +342,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                 ref={(el) => { listRefs.current[station.id] = el; }}
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  setSelectedId(station.id);
-                }}
+                onClick={() => setSelectedId(station.id)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -287,23 +353,28 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                   display: 'flex',
                   flexDirection: 'column',
                   padding: '16px 20px',
-                  borderBottom: '1px solid #F0ECE4',
+                  borderBottom: `1px solid ${HAIR}`,
                   cursor: 'pointer',
-                  backgroundColor: isSelected ? '#FBF8F4' : '#fff',
+                  backgroundColor: isSelected
+                    ? 'rgba(255,255,255,0.04)'
+                    : isCheapest
+                    ? `rgba(${hexToRgb(accent)},0.07)`
+                    : SURFACE,
                   transition: 'background-color 0.1s',
                 }}
               >
-                {/* Main row: number + info + price */}
+                {/* Main row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                   {/* Row number */}
                   <span
                     style={{
                       fontSize: '13px',
                       fontWeight: 700,
-                      color: '#C8C2B8',
+                      color: HAIR,
                       width: '22px',
                       flexShrink: 0,
                       paddingTop: '2px',
+                      fontFamily: "'Geist Mono', monospace",
                     }}
                   >
                     {String(index + 1).padStart(2, '0')}
@@ -320,8 +391,12 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                         flexWrap: 'wrap',
                       }}
                     >
+                      {/* Brand chip */}
                       <span
                         style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
                           fontSize: '11px',
                           fontWeight: 800,
                           color: brandColor,
@@ -329,11 +404,30 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                           letterSpacing: '0.04em',
                         }}
                       >
+                        <span
+                          style={{
+                            width: '5px',
+                            height: '5px',
+                            borderRadius: '50%',
+                            backgroundColor: brandColor,
+                            flexShrink: 0,
+                          }}
+                        />
                         {station.brand}
                       </span>
                       {isCheapest && (
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#AAA' }}>
-                          · Melhor preço
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: accent,
+                            border: `1px solid ${accent}`,
+                            borderRadius: '4px',
+                            padding: '1px 5px',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          Melhor preço
                         </span>
                       )}
                     </div>
@@ -342,43 +436,60 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                         margin: '0 0 4px',
                         fontSize: '16px',
                         fontWeight: 700,
-                        color: '#111',
+                        color: INK,
                         lineHeight: 1.2,
                       }}
                     >
                       {station.name}
                     </p>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#BBB' }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: MUTED, display: 'flex', alignItems: 'center', gap: '5px' }}>
                       {station.distance.toFixed(1)} km · {formatRelativeTime(station.lastUpdated)}
+                      {stale && (
+                        <span
+                          title="Preço com mais de 24 horas"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: STALE,
+                          }}
+                        >
+                          · <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: STALE, display: 'inline-block' }} /> desatualizado
+                        </span>
+                      )}
                     </p>
                   </div>
 
                   {/* Price */}
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        justifyContent: 'flex-end',
-                      }}
-                    >
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#888', marginRight: '1px', lineHeight: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: MUTED, marginRight: '1px', lineHeight: 1 }}>
                         €
                       </span>
-                      <span style={{ fontSize: '22px', fontWeight: 900, color: '#111', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                      <span style={{ fontSize: '22px', fontWeight: 900, color: INK, letterSpacing: '-0.5px', lineHeight: 1 }}>
                         {intPart}.
                       </span>
-                      <span style={{ fontSize: '16px', fontWeight: 900, color: '#111', lineHeight: 1 }}>
+                      <span style={{ fontSize: '16px', fontWeight: 900, color: INK, lineHeight: 1 }}>
                         {decPart}
                       </span>
                     </div>
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 600, color: isCheapest ? '#CCC' : ORANGE, textAlign: 'right' }}>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: isCheapest ? HAIR : accent,
+                        textAlign: 'right',
+                      }}
+                    >
                       {isCheapest ? '—' : `+${diffCents} c`}
                     </p>
                   </div>
                 </div>
 
-                {/* Navigation buttons — shown when station is selected */}
+                {/* Navigation buttons — shown when selected */}
                 {isSelected && (
                   <div
                     style={{
@@ -399,13 +510,19 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                         padding: '11px',
                         borderRadius: '10px',
                         border: 'none',
-                        backgroundColor: '#33CCFF',
+                        backgroundColor: '#1FA3E0',
                         color: '#fff',
                         fontWeight: 700,
                         fontSize: '13px',
                         cursor: 'pointer',
+                        fontFamily: FONT,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
                       }}
                     >
+                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#fff', opacity: 0.7, flexShrink: 0 }} />
                       Waze
                     </button>
                     <button
@@ -418,14 +535,20 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
                         flex: 1,
                         padding: '11px',
                         borderRadius: '10px',
-                        border: '1.5px solid #E8E3DA',
-                        backgroundColor: '#fff',
-                        color: '#111',
+                        border: `1.5px solid ${HAIR}`,
+                        backgroundColor: BG,
+                        color: INK,
                         fontWeight: 700,
                         fontSize: '13px',
                         cursor: 'pointer',
+                        fontFamily: FONT,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
                       }}
                     >
+                      <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#1A8B3A', flexShrink: 0 }} />
                       Google Maps
                     </button>
                   </div>
@@ -438,5 +561,11 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onStationSelect, onBac
     </div>
   );
 };
+
+function hexToRgb(hex: string): string {
+  const m = hex.replace('#', '').match(/.{2}/g);
+  if (!m) return '255,255,255';
+  return m.map((x) => parseInt(x, 16)).join(',');
+}
 
 export default BrandScreen;
