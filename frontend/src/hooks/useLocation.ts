@@ -6,6 +6,18 @@ interface LocationCoords {
   city: string;
 }
 
+const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`
+    );
+    const d = await res.json();
+    return d.city || d.locality || d.principalSubdivision || 'Portugal';
+  } catch {
+    return 'Portugal';
+  }
+};
+
 export const useLocation = () => {
   const [location, setLocation] = useState<LocationCoords | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,9 +31,10 @@ export const useLocation = () => {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation({ latitude, longitude, city: 'Lisboa' });
+        const city = await reverseGeocode(latitude, longitude);
+        setLocation({ latitude, longitude, city });
         setLoading(false);
       },
       (error) => {

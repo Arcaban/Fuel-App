@@ -237,7 +237,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           >
             Combustível
           </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
             {FUEL_TYPES.map((type) => {
               const isActive = fuelType === type;
               const chipAccent = FUEL_ACCENT[type] ?? '#0F8754';
@@ -247,6 +247,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
                   type="button"
                   onClick={() => setFuelType(type)}
                   style={{
+                    flexShrink: 0,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
