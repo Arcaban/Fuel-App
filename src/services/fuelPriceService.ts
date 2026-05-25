@@ -3,6 +3,7 @@ import { dgegClient } from '../integrations/dgeg/dgegClient';
 import { getDistritoIdsForLocation } from '../integrations/dgeg/distritos';
 import { normalizeBrand } from '../integrations/dgeg/brandMapping';
 import { BrandPriceResult, FuelStationResult } from '../integrations/dgeg/types';
+import { getRoadDistances } from '../integrations/osrm/osrmClient';
 import {
   getNearbyStations as getMockNearby,
   getStationsByBrand as getMockByBrand,
@@ -23,7 +24,7 @@ export const getNearbyStations = async (
   }
 
   const distritoIds = getDistritoIdsForLocation(latitude, longitude);
-  return dgegClient.getNearbyStations(
+  const stations = await dgegClient.getNearbyStations(
     latitude,
     longitude,
     radiusKm,
@@ -31,6 +32,21 @@ export const getNearbyStations = async (
     distritoIds,
     config.dgegMaxStations
   );
+
+  // Replace straight-line distances with road distances if OSRM is configured
+  if (process.env.OSRM_URL && stations.length > 0) {
+    const roadKms = await getRoadDistances(
+      latitude,
+      longitude,
+      stations.map(s => ({ lat: s.latitude, lng: s.longitude }))
+    );
+    return stations.map((s, i) => ({
+      ...s,
+      distance: roadKms[i] ?? s.distance,
+    }));
+  }
+
+  return stations;
 };
 
 export const getStationsByBrand = async (

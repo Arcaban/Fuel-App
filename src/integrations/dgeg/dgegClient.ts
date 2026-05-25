@@ -109,14 +109,15 @@ export class DgegClient {
     this.detailCacheTtlMs = detailCacheTtlMs;
   }
 
-  async searchDistritoStations(distritoId: number): Promise<DgegSearchStation[]> {
-    const cacheKey = `distrito:${distritoId}`;
+  async searchDistritoStations(distritoId: number, tipoCombustivel?: string): Promise<DgegSearchStation[]> {
+    const cacheKey = `distrito:${distritoId}:${tipoCombustivel || 'all'}`;
     const cached = getCached<DgegSearchStation[]>(cacheKey);
     if (cached) return cached;
 
     const { data } = await axios.get(`${API_BASE}/PesquisarPostos`, {
       params: {
         idDistrito: distritoId,
+        ...(tipoCombustivel ? { tipoCombustivel } : {}),
         qtdPorPagina: 99999,
         pagina: 1,
       },
@@ -176,16 +177,43 @@ export class DgegClient {
     userLat: number,
     userLng: number
   ): Promise<FuelStationResult | null> {
+    const fuelCandidates = getDgegFuelCandidates(fuelType);
+
+    // Search result already contains price for this fuel — skip the detail fetch
+    if (
+      searchRow.Preco &&
+      searchRow.Combustivel &&
+      fuelCandidates.includes(searchRow.Combustivel)
+    ) {
+      const price = parseDgegPrice(searchRow.Preco);
+      if (price !== null) {
+        return {
+          id: String(searchRow.Id),
+          name: searchRow.Nome,
+          brand: normalizeBrand(searchRow.Marca),
+          latitude: searchRow.Latitude,
+          longitude: searchRow.Longitude,
+          price,
+          fuelType,
+          distance: haversineKm(userLat, userLng, searchRow.Latitude, searchRow.Longitude),
+          lastUpdated: searchRow.DataAtualizacao
+            ? new Date(searchRow.DataAtualizacao.replace(' ', 'T')).toISOString()
+            : new Date().toISOString(),
+          municipio: searchRow.Municipio,
+          morada: searchRow.Morada,
+        };
+      }
+    }
+
+    // Fall back to detail fetch when search row has no price
     const detail = await this.getStationDetail(searchRow.Id);
     if (!detail) return null;
 
     const fuel = this.getFuelPrice(detail, fuelType);
     if (!fuel) return null;
 
-    const lat =
-      detail.Morada?.Latitude ?? searchRow.Latitude;
-    const lng =
-      detail.Morada?.Longitude ?? searchRow.Longitude;
+    const lat = detail.Morada?.Latitude ?? searchRow.Latitude;
+    const lng = detail.Morada?.Longitude ?? searchRow.Longitude;
 
     return {
       id: String(searchRow.Id),
@@ -213,8 +241,10 @@ export class DgegClient {
   ): Promise<FuelStationResult[]> {
     const allCandidates: (DgegSearchStation & { distance: number })[] = [];
 
+    const dgegFuelName = getDgegFuelCandidates(fuelType)[0];
+
     for (const distritoId of distritoIds) {
-      const stations = await this.searchDistritoStations(distritoId);
+      const stations = await this.searchDistritoStations(distritoId, dgegFuelName);
       for (const s of stations) {
         if (!s.Latitude || !s.Longitude) continue;
         const distance = haversineKm(lat, lng, s.Latitude, s.Longitude);

@@ -1,0 +1,88 @@
+import { FuelStation } from '../types';
+
+export const mockStations: FuelStation[] = [
+    {
+        id: '1',
+        name: 'Shell - Downtown LA',
+        location: { latitude: 34.0522, longitude: -118.2437 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.29, premium: 4.69, diesel: 4.89 },
+    },
+    {
+        id: '2',
+        name: 'Chevron - Beverly Hills',
+        location: { latitude: 34.0736, longitude: -118.4004 },
+        fuelTypes: ['regular', 'premium'],
+        prices: { regular: 4.35, premium: 4.79 },
+    },
+    {
+        id: '3',
+        name: 'ARCO - Santa Monica',
+        location: { latitude: 34.0195, longitude: -118.4912 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.15, premium: 4.55, diesel: 4.75 },
+    },
+    {
+        id: '4',
+        name: 'Mobil - Burbank',
+        location: { latitude: 34.1808, longitude: -118.3090 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.22, premium: 4.62, diesel: 4.82 },
+    },
+    {
+        id: '5',
+        name: 'BP - Long Beach',
+        location: { latitude: 33.7701, longitude: -118.1937 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.18, premium: 4.58, diesel: 4.78 },
+    },
+    {
+        id: '6',
+        name: 'Valero - Pasadena',
+        location: { latitude: 34.1478, longitude: -118.1445 },
+        fuelTypes: ['regular', 'premium'],
+        prices: { regular: 4.19, premium: 4.59 },
+    },
+    {
+        id: '7',
+        name: '76 Station - Glendale',
+        location: { latitude: 34.1425, longitude: -118.2551 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.25, premium: 4.65, diesel: 4.85 },
+    },
+    {
+        id: '8',
+        name: 'Costco Gas - El Monte',
+        location: { latitude: 34.0697, longitude: -118.0272 },
+        fuelTypes: ['regular', 'premium'],
+        prices: { regular: 3.99, premium: 4.39 },
+    },
+    {
+        id: '9',
+        name: 'Exxon - Inglewood',
+        location: { latitude: 33.9617, longitude: -118.3531 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.21, premium: 4.61, diesel: 4.81 },
+    },
+    {
+        id: '10',
+        name: 'QuikTrip - Torrance',
+        location: { latitude: 33.8358, longitude: -118.3406 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.16, premium: 4.56, diesel: 4.76 },
+    },
+    {
+        id: '11',
+        name: 'Pilot Travel Center - Barstow',
+        location: { latitude: 34.8958, longitude: -117.0228 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 4.05, premium: 4.45, diesel: 4.65 },
+    },
+    {
+        id: '12',
+        name: 'Flying J - Las Vegas',
+        location: { latitude: 36.1699, longitude: -115.1398 },
+        fuelTypes: ['regular', 'premium', 'diesel'],
+        prices: { regular: 3.89, premium: 4.29, diesel: 4.49 },
+    },
+];

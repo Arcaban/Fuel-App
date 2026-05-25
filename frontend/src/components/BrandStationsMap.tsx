@@ -61,8 +61,6 @@ function FlyToSelected({ selectedId, stations }: { selectedId: string | null; st
   return null;
 }
 
-const TILE_DARK_STYLE = `.osm-dark-tiles { filter: invert(100%) hue-rotate(180deg) brightness(0.65) saturate(0.25); }`;
-
 const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
   stations,
   userLat,
@@ -76,19 +74,17 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
   const aquiIcon = useMemo(() => makeAquiIcon(accentColor), [accentColor]);
 
   return (
-    <>
-      <style>{TILE_DARK_STYLE}</style>
-      <MapContainer
-        center={center}
-        zoom={13}
-        style={{ height: '100%', width: '100%', zIndex: 0 }}
-        scrollWheelZoom
-        attributionControl={false}
-      >
+    <MapContainer
+      center={center}
+      zoom={13}
+      style={{ height: '100%', width: '100%', zIndex: 0 }}
+      scrollWheelZoom
+      attributionControl={false}
+    >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        className="osm-dark-tiles"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+        subdomains="abcd"
       />
       <FitBounds stations={stations} userLat={userLat} userLng={userLng} />
       <FlyToSelected selectedId={selectedId} stations={stations} />
@@ -107,7 +103,6 @@ const BrandStationsMap: React.FC<BrandStationsMapProps> = ({
         );
       })}
     </MapContainer>
-    </>
   );
 };
 

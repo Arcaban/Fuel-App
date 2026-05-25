@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const BG      = '#0F1623';
 const SURFACE = '#1A2333';
@@ -84,7 +84,17 @@ const MenuItem = ({
   </div>
 );
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPrivacy, locationDenied }) => (
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPrivacy, locationDenied }) => {
+  const [consumption, setConsumption] = useState<number>(() =>
+    parseInt(localStorage.getItem('tanq_consumption') || '7', 10)
+  );
+
+  const handleConsumption = (val: number) => {
+    setConsumption(val);
+    localStorage.setItem('tanq_consumption', String(val));
+  };
+
+  return (
   <div
     style={{
       height: '100vh',
@@ -138,6 +148,44 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPriv
 
     {/* Content */}
     <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 40px' }}>
+
+      {/* Preferences section */}
+      <div style={{ marginBottom: '28px' }}>
+        <SectionLabel>Preferências</SectionLabel>
+        <div style={{ backgroundColor: SURFACE, borderRadius: '14px', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 16px' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '15px', fontWeight: 600, color: INK }}>
+              Consumo do veículo
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {[5, 7, 9].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => handleConsumption(val)}
+                  style={{
+                    padding: '7px 18px',
+                    borderRadius: '20px',
+                    border: consumption === val ? '1.5px solid #0F8754' : `1.5px solid ${HAIR}`,
+                    backgroundColor: consumption === val ? '#0F8754' : 'transparent',
+                    color: consumption === val ? '#fff' : MUTED,
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: FONT,
+                  }}
+                >
+                  {val}L
+                </button>
+              ))}
+              <span style={{ fontSize: '12px', color: HAIR }}>/100km</span>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: '12px', color: HAIR }}>
+              Usado para calcular a poupança real ao comparar postos.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Location section */}
       <div style={{ marginBottom: '28px' }}>
@@ -208,6 +256,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPriv
 
     </div>
   </div>
-);
+  );
+};
 
 export default SettingsScreen;

@@ -119,7 +119,7 @@ const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack }) => 
 
       <SectionHeading>1. Responsável pelo tratamento</SectionHeading>
       <Body>
-        O responsável pelo tratamento dos dados pessoais recolhidos pela aplicação tanq. é o seu desenvolvedor individual, contactável através de <Highlight>suporte@tanq.app</Highlight>.
+        O responsável pelo tratamento dos dados pessoais recolhidos pela aplicação tanq. é o seu desenvolvedor individual, contactável através de <Highlight>tanq.fuel@gmail.com</Highlight>.
       </Body>
 
       <SectionHeading>2. Dados recolhidos</SectionHeading>
@@ -173,7 +173,7 @@ const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack }) => 
 
       <SectionHeading>10. Contacto</SectionHeading>
       <Body>
-        Para questões relacionadas com privacidade, contacta-nos em <Highlight>suporte@tanq.app</Highlight>.
+        Para questões relacionadas com privacidade, contacta-nos em <Highlight>tanq.fuel@gmail.com</Highlight>.
       </Body>
 
     </div>

@@ -17,6 +17,7 @@ const FUEL_ACCENT: Record<string, string> = {
   'Gasolina 98':          '#8FD3FF',
   'Gasolina 95 Aditivada':'#5CC48A',
   'Diesel Aditivado':     '#F0A030',
+  'GPL':                  '#A78BFA',
 };
 
 // Fuel fill colors (dark theme — solid button backgrounds only)
@@ -26,6 +27,7 @@ const FUEL_FILL: Record<string, string> = {
   'Gasolina 98':          '#3FA8EE',
   'Gasolina 95 Aditivada':'#4EAA7C',
   'Diesel Aditivado':     '#E09028',
+  'GPL':                  '#7C3AED',
 };
 
 const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -33,6 +35,7 @@ const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
 interface HomeScreenProps {
   onBrandSelect: (brand: string) => void;
   onSettings: () => void;
+  onReady?: () => void;
 }
 
 interface BrandPrice {
@@ -42,7 +45,7 @@ interface BrandPrice {
   savings: number;
 }
 
-const FUEL_TYPES = ['Gasolina 95', 'Diesel', 'Gasolina 98', 'Gasolina 95 Aditivada', 'Diesel Aditivado'] as const;
+const FUEL_TYPES = ['Gasolina 95', 'Diesel', 'Gasolina 98', 'Gasolina 95 Aditivada', 'Diesel Aditivado', 'GPL'] as const;
 
 // Tinted chip backgrounds
 const FUEL_CHIP_BG: Record<string, string> = {
@@ -51,6 +54,7 @@ const FUEL_CHIP_BG: Record<string, string> = {
   'Gasolina 98':          '#101E2A',
   'Gasolina 95 Aditivada':'#162B21',
   'Diesel Aditivado':     '#2A1E0D',
+  'GPL':                  '#1E1433',
 };
 
 // Location pin SVG
@@ -83,7 +87,7 @@ const GearIcon = () => (
   </svg>
 );
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings, onReady }) => {
   const [fuelType, setFuelType] = useState<string>(
     sessionStorage.getItem('fuelType') || FUEL_TYPES[0]
   );
@@ -92,30 +96,70 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
   );
   const [brandPrices, setBrandPrices] = useState<BrandPrice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [chipScrollPct, setChipScrollPct] = useState(0);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [locationNotFound, setLocationNotFound] = useState(false);
   const chipScrollRef = useRef<HTMLDivElement>(null);
-  const { location, loading: locationLoading, denied } = useLocation();
+  const onReadyCalled = useRef(false);
+  const { location, loading: locationLoading, denied, isManual, setManualLocation, clearManualLocation } = useLocation();
 
   const accent    = FUEL_ACCENT[fuelType] ?? '#0F8754';
   const fillColor = FUEL_FILL[fuelType]   ?? '#0F8754';
 
-  useEffect(() => {
+  const loadPrices = async () => {
     if (!location) return;
-    const loadPrices = async () => {
-      setLoading(true);
-      sessionStorage.setItem('fuelType', fuelType);
-      sessionStorage.setItem('radius', String(radius));
-      const prices = await fetchBrandPrices(
-        location.latitude,
-        location.longitude,
-        radius,
-        fuelType
-      );
+    setLoading(true);
+    setFetchError(false);
+    sessionStorage.setItem('fuelType', fuelType);
+    sessionStorage.setItem('radius', String(radius));
+    const prices = await fetchBrandPrices(
+      location.latitude,
+      location.longitude,
+      radius,
+      fuelType
+    );
+    if (prices === null) {
+      setFetchError(true);
+      setBrandPrices([]);
+    } else {
       setBrandPrices(prices);
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+    if (!onReadyCalled.current) {
+      onReadyCalled.current = true;
+      onReady?.();
+    }
+  };
+
+  useEffect(() => {
     loadPrices();
-  }, [location, fuelType, radius]);
+  }, [location, fuelType, radius]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const searchLocation = async () => {
+    const q = locationQuery.trim();
+    if (!q) return;
+    setLocationSearching(true);
+    setLocationNotFound(false);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&accept-language=pt`
+      );
+      const results = await res.json();
+      if (results.length > 0) {
+        const { lat, lon } = results[0];
+        const city = q.charAt(0).toUpperCase() + q.slice(1);
+        setManualLocation({ latitude: parseFloat(lat), longitude: parseFloat(lon), city });
+        setLocationQuery('');
+      } else {
+        setLocationNotFound(true);
+      }
+    } catch {
+      setLocationNotFound(true);
+    }
+    setLocationSearching(false);
+  };
 
   const priceByBrand = useMemo(
     () => Object.fromEntries(brandPrices.map((b) => [b.brand, b])),
@@ -201,27 +245,111 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           </button>
         </div>
 
-        {/* Location denied banner */}
-        {denied && (
+        {/* Manual location indicator — compact, replaces denied banner when active */}
+        {isManual && location && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               marginBottom: '16px',
-              padding: '10px 14px',
-              backgroundColor: 'rgba(194,106,26,0.12)',
+              padding: '9px 14px',
+              backgroundColor: SURFACE,
+              borderRadius: '10px',
+              border: `1px solid ${HAIR}`,
+            }}
+          >
+            <PinIcon color={accent} />
+            <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: INK }}>
+              {location.city}
+            </span>
+            <button
+              type="button"
+              onClick={clearManualLocation}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: MUTED,
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: '0',
+                fontFamily: FONT,
+              }}
+            >
+              Alterar
+            </button>
+          </div>
+        )}
+
+        {/* Location denied banner + city search */}
+        {denied && !isManual && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              backgroundColor: 'rgba(194,106,26,0.10)',
               borderRadius: '10px',
               border: '1px solid rgba(194,106,26,0.25)',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-              <path d="M7 1.75L12.25 11H1.75L7 1.75Z" stroke="#C26A1A" strokeWidth="1.4" strokeLinejoin="round" />
-              <path d="M7 5.5v2.5M7 9.5v.25" stroke="#C26A1A" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontSize: '12px', color: '#C26A1A', fontWeight: 600 }}>
-              A usar Lisboa como localização padrão · Ativa nas definições do dispositivo
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M7 1.75L12.25 11H1.75L7 1.75Z" stroke="#C26A1A" strokeWidth="1.4" strokeLinejoin="round" />
+                <path d="M7 5.5v2.5M7 9.5v.25" stroke="#C26A1A" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: '12px', color: '#C26A1A', fontWeight: 600 }}>
+                GPS desativado · Pesquisa a tua cidade para ver preços precisos
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <input
+                type="text"
+                placeholder="Ex: Porto, Faro, Braga…"
+                value={locationQuery}
+                onChange={(e) => {
+                  setLocationQuery(e.target.value);
+                  setLocationNotFound(false);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') searchLocation(); }}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: `1px solid rgba(194,106,26,0.35)`,
+                  backgroundColor: 'rgba(194,106,26,0.08)',
+                  color: INK,
+                  fontSize: '13px',
+                  fontFamily: FONT,
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button"
+                onClick={searchLocation}
+                disabled={locationSearching}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#C26A1A',
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: locationSearching ? 'default' : 'pointer',
+                  fontFamily: FONT,
+                  flexShrink: 0,
+                }}
+              >
+                {locationSearching ? '…' : 'Ir'}
+              </button>
+            </div>
+
+            {locationNotFound && (
+              <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#C26A1A' }}>
+                Cidade não encontrada. Tenta outra.
+              </p>
+            )}
           </div>
         )}
 
@@ -380,6 +508,32 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           <div style={{ textAlign: 'center', padding: '32px 0', color: MUTED, fontSize: '13px' }}>
             A carregar preços (DGEG)…
           </div>
+        ) : fetchError ? (
+          <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <p style={{ margin: '0 0 4px', fontSize: '15px', fontWeight: 700, color: INK }}>
+              Sem ligação ao servidor
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: MUTED }}>
+              Verifica a ligação à internet e tenta novamente.
+            </p>
+            <button
+              type="button"
+              onClick={loadPrices}
+              style={{
+                padding: '12px 28px',
+                borderRadius: '12px',
+                border: `1.5px solid ${accent}`,
+                backgroundColor: 'transparent',
+                color: accent,
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: FONT,
+              }}
+            >
+              Tentar novamente
+            </button>
+          </div>
         ) : (
           <div
             style={{
@@ -413,6 +567,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
                     opacity: hasPrice ? 1 : 0.35,
                     touchAction: 'manipulation',
                     fontFamily: FONT,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.32)',
                   }}
                 >
                   {isCheapest && (
@@ -485,10 +640,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings }) =>
           </div>
         )}
 
-        {!loading && !locationLoading && brandPrices.length === 0 && (
-          <p style={{ textAlign: 'center', fontSize: '13px', color: MUTED, marginTop: '8px' }}>
-            Sem postos no raio — tenta aumentar o raio.
-          </p>
+        {!loading && !locationLoading && !fetchError && brandPrices.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '8px 16px 16px' }}>
+            <p style={{ margin: '0 0 2px', fontSize: '14px', fontWeight: 700, color: INK }}>
+              Sem postos neste raio
+            </p>
+            <p style={{ margin: 0, fontSize: '13px', color: MUTED }}>
+              Aumenta o raio de pesquisa para ver mais resultados.
+            </p>
+          </div>
         )}
       </div>
 

@@ -5,6 +5,7 @@ export const DGEG_FUEL_TYPES: Record<string, string> = {
   'Gasolina 98':           'Gasolina especial 98',
   'Diesel Aditivado':      'Gasóleo especial',
   'Gasolina 95 Aditivada': 'Gasolina especial 95',
+  'GPL':                   'GPL Auto',
   'Gasóleo simples':       'Gasóleo simples',
   'Gasolina simples 95':   'Gasolina simples 95',
 };
@@ -16,6 +17,7 @@ export const DGEG_FUEL_FALLBACKS: Record<string, string[]> = {
   'Gasolina 98':           ['Gasolina especial 98', 'Gasolina especial 95', 'Gasolina simples 95'],
   'Diesel Aditivado':      ['Gasóleo especial', 'Gasóleo simples'],
   'Gasolina 95 Aditivada': ['Gasolina especial 95', 'Gasolina simples 95'],
+  'GPL':                   ['GPL Auto'],
 };
 
 export const getDgegFuelCandidates = (fuelType?: string): string[] => {

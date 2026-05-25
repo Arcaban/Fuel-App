@@ -2,6 +2,7 @@ import { Application, Request, Response } from 'express';
 import { getNearby, getByBrand, getStation } from '../controllers/stationController';
 import { getBrandPricesByLocation } from '../controllers/priceController';
 import { getTrends } from '../controllers/statsController';
+import { getConfirmations, addConfirmation } from '../controllers/confirmationController';
 
 const PRIVACY_HTML = `<!DOCTYPE html>
 <html lang="pt">
@@ -89,6 +90,8 @@ export const setRoutes = (app: Application): void => {
     // Station endpoints
     app.get('/api/stations/nearby', getNearby);
     app.get('/api/stations/brand/:brand', getByBrand);
+    app.get('/api/stations/:id/confirmations', getConfirmations);
+    app.post('/api/stations/:id/confirm', addConfirmation);
     app.get('/api/stations/:id', getStation);
 
     // Price endpoints

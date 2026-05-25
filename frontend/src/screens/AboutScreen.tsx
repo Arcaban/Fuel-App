@@ -168,7 +168,7 @@ const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => (
       </Section>
 
       <Section title="Contacto">
-        <TextBlock text="Para questões, sugestões ou problemas com a aplicação, entra em contacto através de suporte@tanq.app." last />
+        <TextBlock text="Para questões, sugestões ou problemas com a aplicação, entra em contacto através de tanq.fuel@gmail.com." last />
       </Section>
 
     </div>

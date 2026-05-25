@@ -8,6 +8,7 @@ export interface DgegSearchStation {
   Combustivel?: string;
   Preco?: string;
   DataAtualizacao?: string;
+  Morada?: string;
 }
 
 export interface DgegFuel {

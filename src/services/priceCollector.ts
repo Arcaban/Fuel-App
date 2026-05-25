@@ -12,6 +12,7 @@ const FUEL_TYPES = [
   'Gasolina 98',
   'Diesel Aditivado',
   'Gasolina 95 Aditivada',
+  'GPL',
 ];
 
 const collectSnapshot = async (): Promise<void> => {
