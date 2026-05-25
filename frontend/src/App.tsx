@@ -5,17 +5,19 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import AboutScreen from './screens/AboutScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import SupportScreen from './screens/SupportScreen';
 import SplashScreen from './screens/SplashScreen';
 import { useLocation } from './hooks/useLocation';
 import { App as CapApp } from '@capacitor/app';
 
-type ScreenType = 'onboarding' | 'home' | 'brand' | 'settings' | 'about' | 'privacy';
+type ScreenType = 'onboarding' | 'home' | 'brand' | 'settings' | 'about' | 'privacy' | 'support';
 
 const BACK_MAP: Partial<Record<ScreenType, ScreenType>> = {
   brand: 'home',
   settings: 'home',
   about: 'settings',
   privacy: 'settings',
+  support: 'home',
 };
 
 const startingOnHome = !!localStorage.getItem('onboarding_complete');
@@ -81,6 +83,7 @@ function App() {
         <HomeScreen
           onBrandSelect={handleBrandSelect}
           onSettings={() => setCurrentScreen('settings')}
+          onSupport={() => setCurrentScreen('support')}
           onReady={handleReady}
         />
       )}
@@ -103,6 +106,9 @@ function App() {
       )}
       {currentScreen === 'privacy' && (
         <PrivacyPolicyScreen onBack={() => setCurrentScreen('settings')} />
+      )}
+      {currentScreen === 'support' && (
+        <SupportScreen onBack={() => setCurrentScreen('home')} />
       )}
     </div>
   );

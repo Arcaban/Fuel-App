@@ -35,6 +35,7 @@ const FONT = "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
 interface HomeScreenProps {
   onBrandSelect: (brand: string) => void;
   onSettings: () => void;
+  onSupport: () => void;
   onReady?: () => void;
 }
 
@@ -87,7 +88,7 @@ const GearIcon = () => (
   </svg>
 );
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings, onReady }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings, onSupport, onReady }) => {
   const [fuelType, setFuelType] = useState<string>(
     sessionStorage.getItem('fuelType') || FUEL_TYPES[0]
   );
@@ -223,26 +224,48 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onBrandSelect, onSettings, onRe
               Preços de combustível em Portugal.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onSettings}
-            aria-label="Definições"
-            style={{
-              marginTop: '8px',
-              width: '38px',
-              height: '38px',
-              backgroundColor: SURFACE,
-              border: 'none',
-              borderRadius: '50%',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <GearIcon />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={onSupport}
+              aria-label="Apoiar"
+              style={{
+                width: '38px',
+                height: '38px',
+                backgroundColor: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 13.5S1.5 9.5 1.5 5.5a3 3 0 0 1 5.5-1.65A3 3 0 0 1 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z" fill="#EF4444" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={onSettings}
+              aria-label="Definições"
+              style={{
+                width: '38px',
+                height: '38px',
+                backgroundColor: SURFACE,
+                border: 'none',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <GearIcon />
+            </button>
+          </div>
         </div>
 
         {/* Manual location indicator — compact, replaces denied banner when active */}
