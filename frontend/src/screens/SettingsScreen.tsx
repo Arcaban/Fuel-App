@@ -244,10 +244,70 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPriv
         </div>
       </div>
 
+      {/* Support section */}
+      <div style={{ marginBottom: '28px' }}>
+        <SectionLabel>Apoiar</SectionLabel>
+        <div
+          style={{
+            backgroundColor: SURFACE,
+            borderRadius: '14px',
+            overflow: 'hidden',
+            padding: '16px',
+          }}
+        >
+          <p style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 700, color: INK }}>
+            Desenvolvido por uma pessoa, para toda a gente.
+          </p>
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: MUTED, lineHeight: 1.6 }}>
+            O tanq. é feito nas horas livres com o objetivo de se manter gratuito e sem anúncios. Se a app te é útil, qualquer contribuição ajuda a cobrir os custos do servidor e a continuar a melhorá-la.
+          </p>
+          <a
+            href="https://paypal.me/tanqfuelapp"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '13px',
+              borderRadius: '12px',
+              backgroundColor: '#FF5E5B',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: 800,
+              textAlign: 'center',
+              textDecoration: 'none',
+              boxSizing: 'border-box',
+              letterSpacing: '-0.1px',
+            }}
+          >
+            Apoiar via PayPal
+          </a>
+        </div>
+      </div>
+
+      {/* Beta disclaimer */}
+      <div
+        style={{
+          padding: '12px 14px',
+          backgroundColor: 'rgba(148,163,188,0.07)',
+          borderRadius: '10px',
+          border: `1px solid ${HAIR}`,
+          marginBottom: '24px',
+        }}
+      >
+        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: MUTED }}>
+          Versão Beta
+        </p>
+        <p style={{ margin: 0, fontSize: '12px', color: HAIR, lineHeight: 1.6 }}>
+          O tanq. está em desenvolvimento ativo. Algumas funcionalidades estão a ser refinadas. Se encontrares algum problema, o teu feedback é muito bem-vindo em{' '}
+          <span style={{ color: MUTED, fontWeight: 600 }}>tanq.fuel@gmail.com</span>.
+        </p>
+      </div>
+
       {/* App info */}
-      <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+      <div style={{ textAlign: 'center', paddingTop: '4px' }}>
         <p style={{ margin: 0, fontSize: '12px', color: HAIR }}>
-          tanq. · versão {APP_VERSION}
+          tanq. · versão {APP_VERSION} beta
         </p>
         <p style={{ margin: '4px 0 0', fontSize: '11px', color: HAIR }}>
           Dados © DGEG · Mapas © CartoDB / OpenStreetMap
