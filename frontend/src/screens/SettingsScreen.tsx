@@ -88,10 +88,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPriv
   const [consumption, setConsumption] = useState<number>(() =>
     parseInt(localStorage.getItem('tanq_consumption') || '7', 10)
   );
+  const [tankCapacity, setTankCapacity] = useState<number>(() =>
+    parseInt(localStorage.getItem('tanq_tank_capacity') || '50', 10)
+  );
 
   const handleConsumption = (val: number) => {
     setConsumption(val);
     localStorage.setItem('tanq_consumption', String(val));
+  };
+
+  const handleTankCapacity = (val: number) => {
+    setTankCapacity(val);
+    localStorage.setItem('tanq_tank_capacity', String(val));
   };
 
   return (
@@ -182,6 +190,28 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onAbout, onPriv
             </div>
             <p style={{ margin: '8px 0 0', fontSize: '12px', color: HAIR }}>
               Usado para calcular a poupança real ao comparar postos.
+            </p>
+          </div>
+
+          <div style={{ padding: '14px 16px', borderTop: `1px solid ${HAIR}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: INK }}>
+                Capacidade do depósito
+              </p>
+              <span style={{ fontSize: '15px', fontWeight: 800, color: '#0F8754' }}>{tankCapacity} L</span>
+            </div>
+            <div style={{ position: 'relative', height: '20px', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'absolute', left: 0, right: 0, height: '6px', borderRadius: '3px', backgroundColor: HAIR }} />
+              <div style={{ position: 'absolute', left: 0, height: '6px', width: `${((tankCapacity - 20) / (120 - 20)) * 100}%`, borderRadius: '3px', backgroundColor: '#0F8754' }} />
+              <div style={{ position: 'absolute', left: `${((tankCapacity - 20) / (120 - 20)) * 100}%`, transform: 'translateX(-50%)', width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.5)', pointerEvents: 'none' }} />
+              <input type="range" min={20} max={120} value={tankCapacity} onChange={(e) => handleTankCapacity(Number(e.target.value))} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', margin: 0 }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+              <span style={{ fontSize: '11px', color: MUTED }}>20 L</span>
+              <span style={{ fontSize: '11px', color: MUTED }}>120 L</span>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: '12px', color: HAIR }}>
+              Usado para calcular o custo de encher o depósito.
             </p>
           </div>
         </div>

@@ -89,15 +89,17 @@ export const getBrandPrices = async (
 
   const brandPrices: Record<
     string,
-    { total: number; count: number }
+    { min: number; count: number }
   > = {};
 
   for (const station of stations) {
     const brand = normalizeBrand(station.brand);
     if (!brandPrices[brand]) {
-      brandPrices[brand] = { total: 0, count: 0 };
+      brandPrices[brand] = { min: station.price, count: 0 };
     }
-    brandPrices[brand].total += station.price;
+    if (station.price < brandPrices[brand].min) {
+      brandPrices[brand].min = station.price;
+    }
     brandPrices[brand].count += 1;
   }
 
@@ -106,7 +108,7 @@ export const getBrandPrices = async (
   return Object.entries(brandPrices)
     .map(([brand, data]) => ({
       brand,
-      price: +(data.total / data.count).toFixed(3),
+      price: +data.min.toFixed(3),
       count: data.count,
       savings: +(maxPrice - data.total / data.count).toFixed(3),
     }))

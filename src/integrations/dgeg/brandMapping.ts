@@ -3,14 +3,15 @@ const BRAND_MAP: Record<string, string> = {
   GALP: 'Galp',
   REPSOL: 'Repsol',
   BP: 'BP',
-  CEPSA: 'Cepsa',
-  MOEVE: 'Cepsa', // Cepsa network rebranded in Portugal
+  CEPSA: 'Moeve',
+  MOEVE: 'Moeve',
   PRIO: 'Prio',
   'INTERMARCHÉ': 'Intermarché',
   INTERMARCHE: 'Intermarché',
   AUCHAN: 'Auchan',
   'SILVA & FEIJÃO': 'Silva & Feijão',
   'SILVA & FEIJAO': 'Silva & Feijão',
+  LUBRIALTA: 'Lubrialta',
   SHELL: 'Shell',
 };
 

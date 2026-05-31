@@ -104,6 +104,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
   const [consumption, setConsumption] = useState<number>(() =>
     parseInt(localStorage.getItem('tanq_consumption') || '7', 10)
   );
+  const tankCapacity = parseInt(localStorage.getItem('tanq_tank_capacity') || '50', 10);
 
   const getVerdict = (station: Station): { label: string; isWorth: boolean } | null => {
     if (!cheapestStation || station.id === cheapestStation.id) return null;
@@ -119,10 +120,9 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
     }
 
     const centsPerLitre = (priceDiff * 100).toFixed(1);
-    // Use 40L as internal benchmark for detour decision only — not shown to user
     const extraKm = Math.max(0, cheapestStation.distance - station.distance);
     const detourCost = (extraKm * consumption / 100) * cheapestStation.price;
-    const netSaving = priceDiff * 40 - detourCost;
+    const netSaving = priceDiff * tankCapacity - detourCost;
 
     const cheapestKm = cheapestStation.distance.toFixed(1);
 
@@ -199,7 +199,9 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
   const sortedStations = useMemo(
     () =>
       [...stations].sort((a, b) =>
-        sortBy === 'price' ? a.price - b.price : a.distance - b.distance
+        sortBy === 'price'
+          ? a.price - b.price
+          : (Math.round(a.distance * 10) - Math.round(b.distance * 10)) || (a.price - b.price)
       ),
     [stations, sortBy]
   );
@@ -228,18 +230,7 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
     return tied.reduce((p, c) => (c.distance < p.distance ? c : p));
   }, [sortedStations, cheapestStation]);
 
-  // When sorting by price, pin the nearest station to slot #2 so it's always visible below the cheapest
-  const displayStations = useMemo(() => {
-    if (sortBy === 'distance' || !nearestStation || nearestStation.id === cheapestStation?.id) {
-      return sortedStations;
-    }
-    const nearestIdx = sortedStations.findIndex(s => s.id === nearestStation.id);
-    if (nearestIdx <= 1) return sortedStations;
-    const result = [...sortedStations];
-    result.splice(nearestIdx, 1);
-    result.splice(1, 0, sortedStations[nearestIdx]);
-    return result;
-  }, [sortedStations, sortBy, nearestStation, cheapestStation]);
+  const displayStations = sortedStations;
 
   const averageNearbyPrice = useMemo(() => {
     if (sortedStations.length === 0) return undefined;
@@ -755,6 +746,46 @@ const BrandScreen: React.FC<BrandScreenProps> = ({ brand, onBack }) => {
                           </div>
                         );
                       })()}
+
+                      {/* Fill cost row */}
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '9px 14px',
+                          borderRadius: '10px',
+                          backgroundColor: 'rgba(255,255,255,0.03)',
+                          border: `1.5px solid ${HAIR}`,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', color: MUTED, fontWeight: 600 }}>
+                          Depósito cheio ({tankCapacity} L)
+                        </span>
+                        <span style={{ fontSize: '13px', color: INK, fontWeight: 800 }}>
+                          €{(station.price * tankCapacity).toFixed(2)}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: '6px',
+                          padding: '9px 14px',
+                          borderRadius: '10px',
+                          backgroundColor: 'rgba(255,255,255,0.03)',
+                          border: `1.5px solid ${HAIR}`,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', color: MUTED, fontWeight: 600 }}>
+                          Meio depósito ({Math.round(tankCapacity / 2)} L)
+                        </span>
+                        <span style={{ fontSize: '13px', color: INK, fontWeight: 800 }}>
+                          €{(station.price * tankCapacity / 2).toFixed(2)}
+                        </span>
+                      </div>
 
                       {/* Confirmation row */}
                       <button
